@@ -8,6 +8,9 @@
 #include <iostream>
 #include <algorithm>
 
+#include "Shader.h"
+#include "Mesh.h"
+
 // --- Transformation Variables ---
 const float d = 0.005f; 
 const float s = 0.005f; 
@@ -59,6 +62,13 @@ void processInput(GLFWwindow* window) {
 }
 
 int main() {
+    /*
+    GLFW is teh library to control the window on OPENGL, without this library there is no window
+    1. glfwInit();
+    2. glfwCreateWindow(...);
+    3. glfwMakeContextCurrent(window);
+    */
+
     if (!glfwInit()) return -1;
 
     glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
@@ -71,7 +81,12 @@ int main() {
         return -1;
     }
     glfwMakeContextCurrent(window);
-
+    
+    /*
+    GLEW is the library that load teh recent functions/extensions that OPENGL uses.
+    It allows yto use shaders such as  VBO, VAO, EBO, etc.
+    1. glewInit()
+    */
     glewExperimental = GL_TRUE;
     if (glewInit() != GLEW_OK) return -1;
 
@@ -81,24 +96,17 @@ int main() {
     glCullFace(GL_BACK);
     glFrontFace(GL_CCW);
 
-    // Compile Shaders
-    unsigned int vertexShader = glCreateShader(GL_VERTEX_SHADER);
-    glShaderSource(vertexShader, 1, &vertexShaderSource, NULL);
-    glCompileShader(vertexShader);
+    /*
+    SHADER
+    Compile vertex and fragment shader.
+    shader.use();
+    shader.setMat4(...);
+    Shader decides how we draw each vertex and their color
+    */
+    // --- Create Shader Program (OOP) ---
+    Shader shader(vertexShaderSource, fragmentShaderSource);
 
-    unsigned int fragmentShader = glCreateShader(GL_FRAGMENT_SHADER);
-    glShaderSource(fragmentShader, 1, &fragmentShaderSource, NULL);
-    glCompileShader(fragmentShader);
-
-    unsigned int shaderProgram = glCreateProgram();
-    glAttachShader(shaderProgram, vertexShader);
-    glAttachShader(shaderProgram, fragmentShader);
-    glLinkProgram(shaderProgram);
-
-    glDeleteShader(vertexShader);
-    glDeleteShader(fragmentShader);
-
-    // --- Vertex Data (All Front-Facing CCW Order) ---
+    // --- Vertex Data
     float vertices[] = {
         // --- Front Face (Bright Red) ---
         -0.5f, -0.5f,  0.5f,  0.9f, 0.1f, 0.1f,
@@ -131,35 +139,26 @@ int main() {
          0.5f, -0.5f, -0.5f,  0.25f, 0.25f, 0.25f
     };
 
-    // --- EBO INDICES (18 triangles total) ---
     unsigned int indices[] = {
-        0, 1, 2,   // Front
-        3, 4, 5,   // Right
-        6, 7, 8,   // Back
-        9, 10, 11, // Left
-        12, 13, 14, // Base 1
-        15, 16, 17  // Base 2
+        0, 1, 2,
+        3, 4, 5,
+        6, 7, 8,
+        9, 10, 11,
+        12, 13, 14,
+        15, 16, 17
     };
 
-    unsigned int VAO, VBO, EBO;
-    glGenVertexArrays(1, &VAO);
-    glGenBuffers(1, &VBO);
-    glGenBuffers(1, &EBO);
-
-    glBindVertexArray(VAO);
-    glBindBuffer(GL_ARRAY_BUFFER, VBO);
-    glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
-
-    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
-    glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), indices, GL_STATIC_DRAW);
-
-    // Positions (location 0)
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void*)0);
-    glEnableVertexAttribArray(0);
-
-    // Colors (location 1)
-    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void*)(3 * sizeof(float)));
-    glEnableVertexAttribArray(1);
+    /*
+    MESH
+    Create VAO (Vertex Array Object)
+    Create VBO (Vertex Buffer Object)
+    Create EBO (Element Buffer Object)
+    Save all the vertex and their index 
+    draw(); Will create the pyramide on the screen
+    */
+    // --- Create Mesh (OOP) ---
+    Mesh pyramid(vertices, sizeof(vertices)/sizeof(float),
+                 indices, sizeof(indices)/sizeof(unsigned int));
 
     while (!glfwWindowShouldClose(window)) {
         processInput(window);
@@ -167,8 +166,18 @@ int main() {
         glClearColor(0.08f, 0.1f, 0.14f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-        glUseProgram(shaderProgram);
+        shader.use();
 
+        /*
+        GLM 
+        This library allows the mathematics matrix operation 
+        Translation, scaling , rotation etc. 
+        We create 3 matrices: 
+            Model: Position, rotation other transformations.
+            View: Place the camera view position.
+            Projection: Generetes the perspective projection so it looks 3D in a 2D screen.
+        */
+        
         // --- 1. PROJECTION MATRIX ---
         glm::mat4 projection = glm::perspective(glm::radians(45.0f), 1.0f, 0.1f, 100.0f);
 
@@ -191,23 +200,16 @@ int main() {
         // User Scaling (R, F)
         model = glm::scale(model, scaleVector);
 
-        // --- Combined MVP Matrix ---
+        // Combined MVP Matrix
         glm::mat4 MVP = projection * view * model;
 
-        unsigned int transformLoc = glGetUniformLocation(shaderProgram, "transform");
-        glUniformMatrix4fv(transformLoc, 1, GL_FALSE, glm::value_ptr(MVP));
+        shader.setMat4("transform", glm::value_ptr(MVP));
 
-        glBindVertexArray(VAO);
-        glDrawElements(GL_TRIANGLES, 18, GL_UNSIGNED_INT, 0);
+        pyramid.draw();
 
         glfwSwapBuffers(window);
         glfwPollEvents();
     }
-
-    glDeleteVertexArrays(1, &VAO);
-    glDeleteBuffers(1, &VBO);
-    glDeleteBuffers(1, &EBO);
-    glDeleteProgram(shaderProgram);
 
     glfwTerminate();
     return 0;
