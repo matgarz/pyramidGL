@@ -131,13 +131,27 @@ int main() {
          0.5f, -0.5f, -0.5f,  0.25f, 0.25f, 0.25f
     };
 
-    unsigned int VAO, VBO;
+    // --- EBO INDICES (18 triangles total) ---
+    unsigned int indices[] = {
+        0, 1, 2,   // Front
+        3, 4, 5,   // Right
+        6, 7, 8,   // Back
+        9, 10, 11, // Left
+        12, 13, 14, // Base 1
+        15, 16, 17  // Base 2
+    };
+
+    unsigned int VAO, VBO, EBO;
     glGenVertexArrays(1, &VAO);
     glGenBuffers(1, &VBO);
+    glGenBuffers(1, &EBO);
 
     glBindVertexArray(VAO);
     glBindBuffer(GL_ARRAY_BUFFER, VBO);
     glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
+
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), indices, GL_STATIC_DRAW);
 
     // Positions (location 0)
     glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void*)0);
@@ -166,14 +180,14 @@ int main() {
         
         // User Translation (W, S, A, D)
         model = glm::translate(model, translation);
-
+        
         // Initial 3D Tilt angles
         model = glm::rotate(model, glm::radians(20.0f), glm::vec3(1.0f, 0.0f, 0.0f));
         model = glm::rotate(model, glm::radians(30.0f), glm::vec3(0.0f, 1.0f, 0.0f));
-
+        
         // User Z-rotation (Q, E)
         model = glm::rotate(model, glm::radians(rotationZ), glm::vec3(0.0f, 0.0f, 1.0f));
-
+        
         // User Scaling (R, F)
         model = glm::scale(model, scaleVector);
 
@@ -184,7 +198,7 @@ int main() {
         glUniformMatrix4fv(transformLoc, 1, GL_FALSE, glm::value_ptr(MVP));
 
         glBindVertexArray(VAO);
-        glDrawArrays(GL_TRIANGLES, 0, 18);
+        glDrawElements(GL_TRIANGLES, 18, GL_UNSIGNED_INT, 0);
 
         glfwSwapBuffers(window);
         glfwPollEvents();
@@ -192,6 +206,7 @@ int main() {
 
     glDeleteVertexArrays(1, &VAO);
     glDeleteBuffers(1, &VBO);
+    glDeleteBuffers(1, &EBO);
     glDeleteProgram(shaderProgram);
 
     glfwTerminate();
