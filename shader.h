@@ -5,10 +5,18 @@
 #include <string>
 #include <iostream>
 
+// The Shader class is responsible for:
+// - Compiling the vertex shader
+// - Compiling the fragment shader
+// - Linking both into a single GPU program
+// - Allowing you to activate the shader and send uniforms
 class Shader {
 public:
+// The OpenGL ID of the shader program stored on the GPU
     unsigned int ID;
-
+    // Constructor:
+    // Takes the vertex shader source code and fragment shader source code,
+    // compiles them, and links them into a usable shader program.
     Shader(const char* vertexSrc, const char* fragmentSrc);
     ~Shader();
 

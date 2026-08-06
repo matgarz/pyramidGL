@@ -31,6 +31,7 @@ out vec3 ourColor;
 uniform mat4 transform;
 
 void main() {
+
     gl_Position = transform * vec4(aPos, 1.0);
     ourColor = aColor;
 }
@@ -68,6 +69,13 @@ void processInput(GLFWwindow* window) {
 }
 
 int main() {
+
+     /*
+    GLFW is teh library to control the window on OPENGL, without this library there is no window
+    1. glfwInit();
+    2. glfwCreateWindow(...);
+    3. glfwMakeContextCurrent(window);
+    */
     if (!glfwInit()) return -1;
 
     glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
@@ -80,7 +88,11 @@ int main() {
         return -1;
     }
     glfwMakeContextCurrent(window);
-
+ /*
+    GLEW is the library that load teh recent functions/extensions that OPENGL uses.
+    It allows yto use shaders such as  VBO, VAO, EBO, etc.
+    1. glewInit()
+    */
     glewExperimental = GL_TRUE;
     if (glewInit() != GLEW_OK) return -1;
 
@@ -90,6 +102,13 @@ int main() {
     glCullFace(GL_BACK);
     glFrontFace(GL_CCW);
 
+    /*
+    SHADER
+    Compile vertex and fragment shader.
+    shader.use();
+    shader.setMat4(...);
+    Shader decides how we draw each vertex and their color
+    */
     // --- Create Shader Program (OOP) ---
     Shader shader(vertexShaderSource, fragmentShaderSource);
 
@@ -135,8 +154,16 @@ int main() {
         12, 14, 13,    // Base 1 (CCW facing down/out)
         15, 17, 16     // Base 2 (CCW facing down/out)
     };
+    /*
+    MESH
+    Create VAO (Vertex Array Object)
+    Create VBO (Vertex Buffer Object)
+    Create EBO (Element Buffer Object)
+    Save all the vertex and their index 
+    draw(); Will create the pyramide on the screen
+    */
 
-    // --- Create Mesh ---
+    // --- Create Mesh (OOP)--- 
     Mesh pyramid(vertices, sizeof(vertices) / sizeof(float),
                  indices, sizeof(indices) / sizeof(unsigned int));
 
@@ -152,6 +179,16 @@ int main() {
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
         shader.use();
+
+/*
+        GLM 
+        This library allows the mathematics matrix operation 
+        Translation, scaling , rotation etc. 
+        We create 3 matrices: 
+            Model: Position, rotation other transformations.
+            View: Place the camera view position.
+            Projection: Generetes the perspective projection so it looks 3D in a 2D screen.
+        */
 
         // 1. PROJECTION MATRIX
         glm::mat4 projection = glm::perspective(glm::radians(45.0f), 1.0f, 0.1f, 100.0f);
