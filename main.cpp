@@ -12,12 +12,13 @@
 #include "Mesh.h"
 
 // --- Transformation Variables ---
-const float d = 0.005f; 
-const float s = 0.005f; 
-
 glm::vec3 translation = glm::vec3(0.0f, 0.0f, 0.0f);
 float rotationZ = 0.0f; 
 glm::vec3 scaleVector = glm::vec3(1.0f, 1.0f, 1.0f);
+
+// --- Frame Timing ---
+float deltaTime = 0.0f;
+float lastFrame = 0.0f;
 
 // --- Shaders ---
 const char* vertexShaderSource = R"glsl(
@@ -49,26 +50,24 @@ void processInput(GLFWwindow* window) {
     if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
         glfwSetWindowShouldClose(window, true);
 
-    if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS) translation.y += d;
-    if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS) translation.y -= d;
-    if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS) translation.x -= d;
-    if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS) translation.x += d;
+    // Speed scaled by deltaTime for smooth movement across frame rates
+    float moveSpeed = 1.5f * deltaTime;
+    float rotSpeed  = 90.0f * deltaTime; // degrees per second
+    float scaleSpeed = 0.5f * deltaTime;
 
-    if (glfwGetKey(window, GLFW_KEY_Q) == GLFW_PRESS) rotationZ += 1.0f;
-    if (glfwGetKey(window, GLFW_KEY_E) == GLFW_PRESS) rotationZ -= 1.0f;
+    if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS) translation.y += moveSpeed;
+    if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS) translation.y -= moveSpeed;
+    if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS) translation.x -= moveSpeed;
+    if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS) translation.x += moveSpeed;
 
-    if (glfwGetKey(window, GLFW_KEY_R) == GLFW_PRESS) scaleVector.z += s;
-    if (glfwGetKey(window, GLFW_KEY_F) == GLFW_PRESS) scaleVector.z = std::max(0.01f, scaleVector.z - s);
+    if (glfwGetKey(window, GLFW_KEY_Q) == GLFW_PRESS) rotationZ += rotSpeed;
+    if (glfwGetKey(window, GLFW_KEY_E) == GLFW_PRESS) rotationZ -= rotSpeed;
+
+    if (glfwGetKey(window, GLFW_KEY_R) == GLFW_PRESS) scaleVector.z += scaleSpeed;
+    if (glfwGetKey(window, GLFW_KEY_F) == GLFW_PRESS) scaleVector.z = std::max(0.01f, scaleVector.z - scaleSpeed);
 }
 
 int main() {
-    /*
-    GLFW is teh library to control the window on OPENGL, without this library there is no window
-    1. glfwInit();
-    2. glfwCreateWindow(...);
-    3. glfwMakeContextCurrent(window);
-    */
-
     if (!glfwInit()) return -1;
 
     glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
@@ -81,12 +80,7 @@ int main() {
         return -1;
     }
     glfwMakeContextCurrent(window);
-    
-    /*
-    GLEW is the library that load teh recent functions/extensions that OPENGL uses.
-    It allows yto use shaders such as  VBO, VAO, EBO, etc.
-    1. glewInit()
-    */
+
     glewExperimental = GL_TRUE;
     if (glewInit() != GLEW_OK) return -1;
 
@@ -96,17 +90,10 @@ int main() {
     glCullFace(GL_BACK);
     glFrontFace(GL_CCW);
 
-    /*
-    SHADER
-    Compile vertex and fragment shader.
-    shader.use();
-    shader.setMat4(...);
-    Shader decides how we draw each vertex and their color
-    */
     // --- Create Shader Program (OOP) ---
     Shader shader(vertexShaderSource, fragmentShaderSource);
 
-    // --- Vertex Data
+    // --- Vertex Data (3 Pos, 3 Color per vertex) ---
     float vertices[] = {
         // --- Front Face (Bright Red) ---
         -0.5f, -0.5f,  0.5f,  0.9f, 0.1f, 0.1f,
@@ -139,28 +126,26 @@ int main() {
          0.5f, -0.5f, -0.5f,  0.25f, 0.25f, 0.25f
     };
 
+    // Corrected indices ensuring CCW order for outer-facing triangles
     unsigned int indices[] = {
-        0, 1, 2,
-        3, 4, 5,
-        6, 7, 8,
-        9, 10, 11,
-        12, 13, 14,
-        15, 16, 17
+        0, 1, 2,       // Front
+        3, 4, 5,       // Right
+        6, 7, 8,       // Back
+        9, 10, 11,     // Left
+        12, 14, 13,    // Base 1 (CCW facing down/out)
+        15, 17, 16     // Base 2 (CCW facing down/out)
     };
 
-    /*
-    MESH
-    Create VAO (Vertex Array Object)
-    Create VBO (Vertex Buffer Object)
-    Create EBO (Element Buffer Object)
-    Save all the vertex and their index 
-    draw(); Will create the pyramide on the screen
-    */
-    // --- Create Mesh (OOP) ---
-    Mesh pyramid(vertices, sizeof(vertices)/sizeof(float),
-                 indices, sizeof(indices)/sizeof(unsigned int));
+    // --- Create Mesh ---
+    Mesh pyramid(vertices, sizeof(vertices) / sizeof(float),
+                 indices, sizeof(indices) / sizeof(unsigned int));
 
     while (!glfwWindowShouldClose(window)) {
+        // Calculate Delta Time
+        float currentFrame = static_cast<float>(glfwGetTime());
+        deltaTime = currentFrame - lastFrame;
+        lastFrame = currentFrame;
+
         processInput(window);
 
         glClearColor(0.08f, 0.1f, 0.14f, 1.0f);
@@ -168,36 +153,18 @@ int main() {
 
         shader.use();
 
-        /*
-        GLM 
-        This library allows the mathematics matrix operation 
-        Translation, scaling , rotation etc. 
-        We create 3 matrices: 
-            Model: Position, rotation other transformations.
-            View: Place the camera view position.
-            Projection: Generetes the perspective projection so it looks 3D in a 2D screen.
-        */
-        
-        // --- 1. PROJECTION MATRIX ---
+        // 1. PROJECTION MATRIX
         glm::mat4 projection = glm::perspective(glm::radians(45.0f), 1.0f, 0.1f, 100.0f);
 
-        // --- 2. VIEW MATRIX ---
+        // 2. VIEW MATRIX
         glm::mat4 view = glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, -0.2f, -3.0f));
 
-        // --- 3. MODEL MATRIX ---
+        // 3. MODEL MATRIX
         glm::mat4 model = glm::mat4(1.0f);
-        
-        // User Translation (W, S, A, D)
         model = glm::translate(model, translation);
-        
-        // Initial 3D Tilt angles
         model = glm::rotate(model, glm::radians(20.0f), glm::vec3(1.0f, 0.0f, 0.0f));
         model = glm::rotate(model, glm::radians(30.0f), glm::vec3(0.0f, 1.0f, 0.0f));
-        
-        // User Z-rotation (Q, E)
         model = glm::rotate(model, glm::radians(rotationZ), glm::vec3(0.0f, 0.0f, 1.0f));
-        
-        // User Scaling (R, F)
         model = glm::scale(model, scaleVector);
 
         // Combined MVP Matrix

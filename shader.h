@@ -1,34 +1,35 @@
 #ifndef SHADER_H
 #define SHADER_H
 
-#include <string>
 #include <GL/glew.h>
+#include <string>
+#include <iostream>
 
-// The Shader class is responsible for:
-// - Compiling the vertex shader
-// - Compiling the fragment shader
-// - Linking both into a single GPU program
-// - Allowing you to activate the shader and send uniforms
 class Shader {
 public:
-    // The OpenGL ID of the shader program stored on the GPU
     unsigned int ID;
 
-    // Constructor:
-    // Takes the vertex shader source code and fragment shader source code,
-    // compiles them, and links them into a usable shader program.
     Shader(const char* vertexSrc, const char* fragmentSrc);
+    ~Shader();
 
-    // Activates (uses) this shader program in the current OpenGL context.
-    void use() const {
-        glUseProgram(ID);
-    }
+    // =========================================================================
+    // ADDED METHOD: ACTIVATES THE SHADER PROGRAM IN OPENGL VIA glUseProgram.
+    // REQUIRED BEFORE SETTING UNIFORMS OR DRAWING WITH THIS SHADER.
+    // =========================================================================
+    void use() const;
 
-    // Sends a 4x4 matrix (mat4) uniform to the shader.
-    // Used for MVP (Model-View-Projection) transformations.
-    void setMat4(const std::string& name, const float* value) const {
-        glUniformMatrix4fv(glGetUniformLocation(ID, name.c_str()), 1, GL_FALSE, value);
-    }
+    // =========================================================================
+    // ADDED METHOD: PASSES 4X4 MATRIX UNIFORMS (LIKE MVP) DOWN TO GLSL SHADERS.
+    // NECESSARY TO BIND THE "transform" UNIFORM IN MAIN.
+    // =========================================================================
+    void setMat4(const std::string& name, const float* matrixData) const;
+
+private:
+    // =========================================================================
+    // ADDED HELPER: CHECKS GLSL COMPILATION & LINKING ERRORS AT RUNTIME.
+    // PRINTS DETAILED GLSL COMPILER LOGS TO THE CONSOLE IF A SHADER FAILS.
+    // =========================================================================
+    void checkCompileErrors(unsigned int shader, std::string type);
 };
 
 #endif
