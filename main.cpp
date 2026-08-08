@@ -13,7 +13,7 @@
 
 // --- Transformation Variables ---
 glm::vec3 translation = glm::vec3(0.0f, 0.0f, 0.0f);
-float rotationZ = 0.0f; 
+float rotationZ = 0.0f;
 glm::vec3 scaleVector = glm::vec3(1.0f, 1.0f, 1.0f);
 
 // --- Frame Timing ---
@@ -21,31 +21,25 @@ float deltaTime = 0.0f;
 float lastFrame = 0.0f;
 
 // --- Shaders ---
-const char* vertexShaderSource = R"glsl(
+const char* vertexShaderSrc = R"(
 #version 330 core
-layout (location = 0) in vec3 aPos;
-layout (location = 1) in vec3 aColor;
-
-out vec3 ourColor;
+layout(location = 0) in vec3 aPos;
 
 uniform mat4 transform;
 
 void main() {
-
     gl_Position = transform * vec4(aPos, 1.0);
-    ourColor = aColor;
 }
-)glsl";
+)";
 
-const char* fragmentShaderSource = R"glsl(
+const char* fragmentShaderSrc = R"(
 #version 330 core
 out vec4 FragColor;
-in vec3 ourColor;
 
 void main() {
-    FragColor = vec4(ourColor, 1.0f);
+    FragColor = vec4(1.0); // white wireframe
 }
-)glsl";
+)";
 
 void processInput(GLFWwindow* window) {
     if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
@@ -53,23 +47,27 @@ void processInput(GLFWwindow* window) {
 
     // Speed scaled by deltaTime for smooth movement across frame rates
     float moveSpeed = 1.5f * deltaTime;
-    float rotSpeed  = 90.0f * deltaTime; // degrees per second
+    float rotSpeed  = 90.0f * deltaTime;
     float scaleSpeed = 0.5f * deltaTime;
 
+    // Translation
     if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS) translation.y += moveSpeed;
     if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS) translation.y -= moveSpeed;
     if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS) translation.x -= moveSpeed;
     if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS) translation.x += moveSpeed;
 
+    // Rotation
     if (glfwGetKey(window, GLFW_KEY_Q) == GLFW_PRESS) rotationZ += rotSpeed;
     if (glfwGetKey(window, GLFW_KEY_E) == GLFW_PRESS) rotationZ -= rotSpeed;
 
+    // Scaling
     if (glfwGetKey(window, GLFW_KEY_R) == GLFW_PRESS) scaleVector.z += scaleSpeed;
-    if (glfwGetKey(window, GLFW_KEY_F) == GLFW_PRESS) scaleVector.z = std::max(0.01f, scaleVector.z - scaleSpeed);
+    if (glfwGetKey(window, GLFW_KEY_F) == GLFW_PRESS)
+        scaleVector.z = std::max(0.01f, scaleVector.z - scaleSpeed);
 }
 
 int main() {
-
+    
      /*
     GLFW is teh library to control the window on OPENGL, without this library there is no window
     1. glfwInit();
@@ -82,7 +80,7 @@ int main() {
     glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
     glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
 
-    GLFWwindow* window = glfwCreateWindow(800, 800, "COMP 371 - 3D Perspective Pyramid", NULL, NULL);
+    GLFWwindow* window = glfwCreateWindow(800, 800, "COMP 371 - Assignment 3 Chair", NULL, NULL);
     if (!window) {
         glfwTerminate();
         return -1;
@@ -96,79 +94,24 @@ int main() {
     glewExperimental = GL_TRUE;
     if (glewInit() != GLEW_OK) return -1;
 
-    // --- Enable 3D Depth Testing & Face Culling ---
     glEnable(GL_DEPTH_TEST);
-    glEnable(GL_CULL_FACE);
-    glCullFace(GL_BACK);
-    glFrontFace(GL_CCW);
 
-    /*
+    // Wireframe mode (required)
+    glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+
+        /*
     SHADER
     Compile vertex and fragment shader.
     shader.use();
     shader.setMat4(...);
     Shader decides how we draw each vertex and their color
     */
-    // --- Create Shader Program (OOP) ---
-    Shader shader(vertexShaderSource, fragmentShaderSource);
+    Shader shader(vertexShaderSrc, fragmentShaderSrc);
 
-    // --- Vertex Data (3 Pos, 3 Color per vertex) ---
-    float vertices[] = {
-        // --- Front Face (Bright Red) ---
-        -0.5f, -0.5f,  0.5f,  0.9f, 0.1f, 0.1f,
-         0.5f, -0.5f,  0.5f,  0.9f, 0.1f, 0.1f,
-         0.0f,  0.5f,  0.0f,  1.0f, 0.4f, 0.4f,
-
-        // --- Right Face (Vibrant Green) ---
-         0.5f, -0.5f,  0.5f,  0.1f, 0.8f, 0.1f,
-         0.5f, -0.5f, -0.5f,  0.1f, 0.8f, 0.1f,
-         0.0f,  0.5f,  0.0f,  0.4f, 1.0f, 0.4f,
-
-        // --- Back Face (Deep Blue) ---
-         0.5f, -0.5f, -0.5f,  0.1f, 0.2f, 0.9f,
-        -0.5f, -0.5f, -0.5f,  0.1f, 0.2f, 0.9f,
-         0.0f,  0.5f,  0.0f,  0.4f, 0.5f, 1.0f,
-
-        // --- Left Face (Bright Yellow) ---
-        -0.5f, -0.5f, -0.5f,  0.9f, 0.8f, 0.1f,
-        -0.5f, -0.5f,  0.5f,  0.9f, 0.8f, 0.1f,
-         0.0f,  0.5f,  0.0f,  1.0f, 1.0f, 0.5f,
-
-        // --- Base Triangle 1 (Grey) ---
-        -0.5f, -0.5f, -0.5f,  0.25f, 0.25f, 0.25f,
-        -0.5f, -0.5f,  0.5f,  0.25f, 0.25f, 0.25f,
-         0.5f, -0.5f,  0.5f,  0.25f, 0.25f, 0.25f,
-
-        // --- Base Triangle 2 (Grey) ---
-        -0.5f, -0.5f, -0.5f,  0.25f, 0.25f, 0.25f,
-         0.5f, -0.5f,  0.5f,  0.25f, 0.25f, 0.25f,
-         0.5f, -0.5f, -0.5f,  0.25f, 0.25f, 0.25f
-    };
-
-    // Corrected indices ensuring CCW order for outer-facing triangles
-    unsigned int indices[] = {
-        0, 1, 2,       // Front
-        3, 4, 5,       // Right
-        6, 7, 8,       // Back
-        9, 10, 11,     // Left
-        12, 14, 13,    // Base 1 (CCW facing down/out)
-        15, 17, 16     // Base 2 (CCW facing down/out)
-    };
-    /*
-    MESH
-    Create VAO (Vertex Array Object)
-    Create VBO (Vertex Buffer Object)
-    Create EBO (Element Buffer Object)
-    Save all the vertex and their index 
-    draw(); Will create the pyramide on the screen
-    */
-
-    // --- Create Mesh (OOP)--- 
-    Mesh pyramid(vertices, sizeof(vertices) / sizeof(float),
-                 indices, sizeof(indices) / sizeof(unsigned int));
+    // Load your OBJ chair
+    Mesh chair("chair.obj");
 
     while (!glfwWindowShouldClose(window)) {
-        // Calculate Delta Time
         float currentFrame = static_cast<float>(glfwGetTime());
         deltaTime = currentFrame - lastFrame;
         lastFrame = currentFrame;
@@ -180,7 +123,7 @@ int main() {
 
         shader.use();
 
-/*
+        /*
         GLM 
         This library allows the mathematics matrix operation 
         Translation, scaling , rotation etc. 
@@ -193,14 +136,12 @@ int main() {
         // 1. PROJECTION MATRIX
         glm::mat4 projection = glm::perspective(glm::radians(45.0f), 1.0f, 0.1f, 100.0f);
 
-        // 2. VIEW MATRIX
-        glm::mat4 view = glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, -0.2f, -3.0f));
+        // 2.  VIEW MATRIX (camera)
+        glm::mat4 view = glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, -0.2f, -5.0f));
 
         // 3. MODEL MATRIX
         glm::mat4 model = glm::mat4(1.0f);
         model = glm::translate(model, translation);
-        model = glm::rotate(model, glm::radians(20.0f), glm::vec3(1.0f, 0.0f, 0.0f));
-        model = glm::rotate(model, glm::radians(30.0f), glm::vec3(0.0f, 1.0f, 0.0f));
         model = glm::rotate(model, glm::radians(rotationZ), glm::vec3(0.0f, 0.0f, 1.0f));
         model = glm::scale(model, scaleVector);
 
@@ -209,7 +150,7 @@ int main() {
 
         shader.setMat4("transform", glm::value_ptr(MVP));
 
-        pyramid.draw();
+        chair.draw();
 
         glfwSwapBuffers(window);
         glfwPollEvents();
