@@ -13,7 +13,7 @@
 
 // --- Transformation Variables ---
 glm::vec3 translation = glm::vec3(0.0f, 0.0f, 0.0f);
-float rotationZ = 0.0f;
+float rotationY = 0.0f;
 glm::vec3 scaleVector = glm::vec3(1.0f, 1.0f, 1.0f);
 
 // --- Frame Timing ---
@@ -57,8 +57,8 @@ void processInput(GLFWwindow* window) {
     if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS) translation.x += moveSpeed;
 
     // Rotation
-    if (glfwGetKey(window, GLFW_KEY_Q) == GLFW_PRESS) rotationZ += rotSpeed;
-    if (glfwGetKey(window, GLFW_KEY_E) == GLFW_PRESS) rotationZ -= rotSpeed;
+    if (glfwGetKey(window, GLFW_KEY_Q) == GLFW_PRESS) rotationY += rotSpeed;
+    if (glfwGetKey(window, GLFW_KEY_E) == GLFW_PRESS) rotationY -= rotSpeed;
 
     // Scaling
     if (glfwGetKey(window, GLFW_KEY_R) == GLFW_PRESS) scaleVector.z += scaleSpeed;
@@ -142,7 +142,7 @@ int main() {
         // 3. MODEL MATRIX
         glm::mat4 model = glm::mat4(1.0f);
         model = glm::translate(model, translation);
-        model = glm::rotate(model, glm::radians(rotationZ), glm::vec3(0.0f, 0.0f, 1.0f));
+        model = glm::rotate(model, glm::radians(rotationY), glm::vec3(0.0f, 1.0f, 0.0f));
         model = glm::scale(model, scaleVector);
 
         // Combined MVP Matrix
